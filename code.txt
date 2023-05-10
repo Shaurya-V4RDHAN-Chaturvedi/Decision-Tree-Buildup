@@ -1,0 +1,202 @@
+import pandas as pd
+import random
+import math
+from termcolor import colored
+
+def file(col):
+    globals()
+    global threshold
+
+    #f = int(input("Enter no. of features : "))
+    #####  Creates list according to number of features
+    f = len(col[0]) - 1       ##### Number of columns
+    for i in range(f+1):
+        globals()['f{}'.format(i)] = []
+
+    ##### Here we have stored each feature value in lists for easy access
+    for j in range(1, f + 1):
+        globals()['f{}'.format(j)].clear()
+        for i in range(0, len(col)):
+            globals()['f{}'.format(j)].append(col[i][j - 1])
+
+    ##### Calculates the max and min of the feature
+    for i in range(1, f + 1):
+        print('f{} max='.format(i), max(globals()['f{}'.format(i)]))
+        print('f{} min='.format(i), min(globals()['f{}'.format(i)]))
+
+    #Calculates the dynamic range between the max and min of the feature
+    for i in range(1, f + 1):
+        print("Dynamic Range of f{}=".format(i), max(globals()['f{}'.format(i)]) - min(globals()['f{}'.format(i)]))
+
+    ##### GENERATING RANDOM VALUES
+    for i in range(1, f + 1):
+        globals()['list_{}'.format(i)] = []  ##### This is created to store random values in the list
+    for i in range(1, f + 1):
+        for j in range(4):     ##### We have worked by using only 4 random values
+            x = round(random.uniform(max(globals()['f{}'.format(i)]), min(globals()['f{}'.format(i)])), 4)
+            globals()['list_{}'.format(i)].append(x)
+
+    for i in range(1, f + 1):
+        print("list {}=".format(i), globals()['list_{}'.format(i)])
+
+    ##### FUNCTION TO CALCULATE INFORMATION GAIN
+    def informationgaincalculation(threshold, k):
+        def max_entro(p, n):
+            ig_max = (-p / sum * ((math.log(p / sum)) / math.log(2))) - (n / sum * ((math.log(n / sum)) / math.log(2)))
+            return ig_max
+
+        def calc_information_gain(ls, lp, ln, rs, rp, rn):
+            result1 = ((-lp / ls) * (math.log(lp / ls, 2)))
+            result2 = ((ln / ls) * (math.log(ln / ls, 2)))
+            result3 = ((-rp / rs) * (math.log(rp / rs, 2)))
+            result4 = ((rn / rs) * (math.log(rn / rs, 2)))
+            l1 = (ls / sum) * (result1 - result2)
+            r1 = (rs / sum) * (result3 - result4)
+            return l1, r1
+
+        global label, ln, lp, rn, rp
+        left = 0
+        right = 0
+        leftpositive = lp = 0
+        leftnegative = ln = 0
+        rightpositive = rp = 0
+        rightnegative = rn = 0
+
+        label = list(set(df.iloc[:, -1]))
+        print("labels=",label)
+        left_element=[]
+        right_element=[]
+        # length=len(col[0]-1)
+        # print("Enter feature number: ")
+        fno = k
+        for i in range(0, len(col)):
+            if col[i][fno - 1] < threshold:
+                left = left + 1
+                if df.iloc[:,-1][i] == label[0]:
+                    ln = ln + 1
+                else:
+                    lp = lp + 1
+            if col[i][fno - 1] > threshold:
+                right = right + 1
+                if df.iloc[:,-1][i] == label[0]:
+                    rn = rn + 1
+                else:
+                    rp = rp + 1
+
+        sum = left + right
+        pos = lp + rp
+        neg = ln + rn
+        leftsum = ls = lp + ln
+        rightsum = rs = rp + rn
+        igmax = max_entro(pos, neg)
+        print("Max Entropy=", igmax)
+        l1, r1 = calc_information_gain(ls, lp, ln, rs, rp, rn)
+        information_gain = igmax - (l1 + r1)
+        return information_gain,left,right,leftsum,rightsum,left_element,right_element
+
+    sample_dict = {}
+    rdindex = {}
+    for k in range(1, f + 1):
+        for j in range(4):
+            ##### We have used exception handling to divsion by zero error while calculation
+            try:
+                threshold = globals()['list_{}'.format(k)][j]
+                print("\n", threshold)
+                ##### t stores information_gain
+                t,left,right,leftsum,rightsum,left_element,right_element = informationgaincalculation(threshold, k)
+                print("information gain=", t)
+                print("\n")
+                ##### Sample_Dict contains the random value and its corresponding threshold value which is not giving any error
+                sample_dict.update({threshold: t})
+                ##### Rdindex dictionary contains the random value list index with their threshold value
+                rdindex.update({'list_[%s][%s]' % (k, j): t})
+            except:
+                print("Error at threshold %f \n" % (threshold))
+                pass
+    print("\nSAMPLE DICTIONARY CONTENTS\n", sample_dict)
+
+    max_key = max(sample_dict, key=sample_dict.get)
+    max_key1 = max(rdindex, key=rdindex.get)
+    max_value = max(sample_dict.values())
+    print("\nRandom value=", max_key)
+    print("Max threshold value the random value is giving=", max_value)
+    print("max_key1=",max_key1)
+
+    try:
+        temp1 = "".join(max_key1[7])
+        temp=int(temp1)
+        if temp in range(1, 9):
+            print("Feature=",max_key1[6],max_key1[7])
+            fno1="".join([max_key1[6],max_key1[7]])
+            global fno
+            fno = int(fno1)
+    except:
+        #print("Feature=",max_key1[6])
+        fno1="".join(max_key1[6])
+        fno=int(fno1)
+    ##### This prints the best feature number which should be taken as node
+    print("Feature=",fno)
+    LEFT=0
+    RIGHT=0
+    for i in range(0, len(col)):
+        if col[i][fno-1] < max_value:
+            LEFT = LEFT + 1
+            left_element.append(col[i][fno-1])
+        if col[i][fno-1] > max_value:
+            RIGHT = RIGHT + 1
+            right_element.append(col[i][fno-1])
+    print("No. of left elements=", LEFT)
+    print("No. of right elements=", RIGHT)
+
+    dataframe1 = pd.DataFrame(left_element)
+    print(dataframe1)
+    dataframe2=pd.DataFrame(right_element)
+    print(dataframe2)
+
+    """if (LEFT<700):
+        print("\nLeft child is leaf node ")
+    elif (RIGHT<700):
+        print("\nRight child is leaf node")
+    elif (LEFT<700) and (RIGHT<700):
+        print("\nBoth Left and Right are leaf node")"""
+
+    count_leftchild_elements = 0
+    count_rightchild_elements = 0
+    leftchild_elements = []
+    rightchild_elements = []
+
+    ##### Seaparating elements into left child and right child,comparing with Max threshold value the random value is giving
+    for i in range(len(col)):  ##### EXTRACTING ROW
+        if df.iloc[:, 0][i] < max_value:
+            # print(col[i])
+            leftchild_elements.append(col[i])
+            count_leftchild_elements += 1
+        elif df.iloc[:, 0][i] >= max_value:
+            # print(col[i])
+            rightchild_elements.append(col[i])
+            count_rightchild_elements += 1
+    count = count_leftchild_elements + count_rightchild_elements
+    print("Total no. of elements:",count)
+    print("No. of left child elements:",count_leftchild_elements)
+    print("No. of right child elements:",count_rightchild_elements)
+    print("\n")
+    lce=pd.DataFrame(leftchild_elements)
+    rce = pd.DataFrame(rightchild_elements)
+    print("Left child elements are:\n",lce)
+    print("\n\nRight child elements are:\n", rce)
+
+    #PRINTING WHICH CHILD IS LEAF NODE
+    if count_leftchild_elements < 700:
+        print('\033[1m' + '\nLEFT CHILD IS LEAF NODE\n' + '\033[0m')  ##### For bold printing
+        print("Evaluating right child elements")
+        file(rightchild_elements)
+    elif count_rightchild_elements < 700:
+        print('\033[1m' + '\nRIGHT CHILD IS LEAF NODE\n' + '\033[0m')
+        print("Evaluating left child elements")
+        file(leftchild_elements)
+
+
+user_input = input("Enter the path of your file: ")
+df = pd.read_csv(user_input, quotechar=" ")
+col = df.to_numpy()
+file(col)
